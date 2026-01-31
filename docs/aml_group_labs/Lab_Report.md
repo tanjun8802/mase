@@ -42,5 +42,6 @@ The best Pruning result in terms of evaluation accuracy for both ```L1-Norm``` a
 # Lab 2: Neural Architecture Search
 
 # Lab 3: Mixed Precision Search
+![Mixed Precision Search](.\attachments\T6_1_100epoch.png)
 
 # Lab 4: (Software Stream) Performance Engineering
