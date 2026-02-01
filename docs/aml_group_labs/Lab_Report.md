@@ -42,6 +42,12 @@ The best Pruning result in terms of evaluation accuracy for both ```L1-Norm``` a
 # Lab 2: Neural Architecture Search
 
 # Lab 3: Mixed Precision Search
+## Part 1
+
+After running 100 trials with Optuna TPESampler, the maximum achieved accuracy is found to be 0.87216. The plot optimization history plot also shows the best accuracy has been reached in the first 10 trials, with the remaining trials attemping to improve but didn't find any better parameters. 
 ![Mixed Precision Search](.\attachments\T6_1_100epoch.png)
+
+## Part 2
+
 
 # Lab 4: (Software Stream) Performance Engineering
