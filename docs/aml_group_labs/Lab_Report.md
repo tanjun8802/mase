@@ -61,8 +61,24 @@ a) ```torch.compile``` compiles PyTorch code into optimized kernels that signifi
 
 When the optimised model is used on CPU, massive overhead will occur due to the limted amount of threading/parallel computing on CPU. The execution will need to allocate memory to save all the data from a thread before the start of the execution of the next thread in CPU. Therefore, it turns out the optimised model rans slower on CPU compared to the original model. 
 
-b) In this task the experiment is ran on Colab, using the A100 GPU. When the device is set to CUDA:
+b) In this task the experiment is ran on Colab, using the T4 GPU. When the device is set to CUDA:
 ```
 Original model: 1.8479 s 
 Optimized model: 1.3985 s
 ```
+
+### Task 2
+
+a) We applied the profiling in Task 1 to here, and when the device is set to CPU, 
+```
+Unfused SPDA:     546.620 ms
+Fused SPDA:       27.650 ms
+```
+b) When device is set to CUDA (Colab), using the T4 GPU gives the runtime comparison:
+```
+Unfused SPDA:     0.616 ms
+Fused SPDA:       0.257 ms
+```
+Here no matter CPU or GPU is used, Fused SPDA outperforms the original SPDA implementation. This can be explained as in the fused version, PyTorch implementation reduces the amount of read/write operations by only having a single kernel. It basically removes the need of storing the intermediate results, unlike the normal verison of SPDA where we need 4 kernels to perform a successful SPDA, which requires to record the intermediate products which increased the memory access traffic, which translates to slower completion speed.
+### Task 3
+
