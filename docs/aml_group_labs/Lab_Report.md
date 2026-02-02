@@ -40,15 +40,15 @@ Based on Part 1, we decided to use the model with quantisation level of 12 with 
 
 The best Pruning result in terms of evaluation accuracy for both ```L1-Norm``` and ```Random``` methods happened when sparsity is set to 0.1. As sparsity value increases, the model's evaluation accuracy reduces, particularly for ```L1-Norm``` method sharp drop occured between 0.8-0.9, while for ```Random``` method sharp drop happended eariler between 0.5-0.6. This can be explained as more weights and connections are dropped in high sparsity values, the BERT model will not be able to learn the representation of the network effectively.
 # Lab 2: Neural Architecture Search
-![Neural Architecture Search Task 1](.\attachments\Tutorial_5_task_1.png)
-![Neural Architecture Search Task 2](.\attachments\Tutorial_5_Task2.png)
+![Neural Architecture Search Task 1](./attachments/Tutorial_5_task_1.png)
+![Neural Architecture Search Task 2](./attachments/Tutorial_5_Task2.png)
 
 
 # Lab 3: Mixed Precision Search
 ## Part 1
 
 After running 100 trials with Optuna TPESampler, the maximum achieved accuracy is found to be 0.87216. The plot optimization history plot also shows the best accuracy has been reached in the first 10 trials, with the remaining trials attemping to improve but didn't find any better parameters. 
-![Mixed Precision Search](.\attachments\T6_1_100epoch.png)
+![Mixed Precision Search](./attachments/T6_1_100epoch.png)
 
 ## Part 2
 
