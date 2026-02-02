@@ -40,6 +40,9 @@ Based on Part 1, we decided to use the model with quantisation level of 12 with 
 
 The best Pruning result in terms of evaluation accuracy for both ```L1-Norm``` and ```Random``` methods happened when sparsity is set to 0.1. As sparsity value increases, the model's evaluation accuracy reduces, particularly for ```L1-Norm``` method sharp drop occured between 0.8-0.9, while for ```Random``` method sharp drop happended eariler between 0.5-0.6. This can be explained as more weights and connections are dropped in high sparsity values, the BERT model will not be able to learn the representation of the network effectively.
 # Lab 2: Neural Architecture Search
+![Neural Architecture Search Task 1](.\attachments\Tutorial_5_task_1.png)
+![Neural Architecture Search Task 2](.\attachments\Tutorial_5_Task2.png)
+
 
 # Lab 3: Mixed Precision Search
 ## Part 1
@@ -51,3 +54,15 @@ After running 100 trials with Optuna TPESampler, the maximum achieved accuracy i
 
 
 # Lab 4: (Software Stream) Performance Engineering
+
+### Task 1
+
+a) ```torch.compile``` compiles PyTorch code into optimized kernels that significantly speed up inference. This feature relies on **TorchDynamo** to compile the code into graphs and **TorchInductor** to further compile the graphs into optimized kernels, which is ready for GPU deployment.
+
+When the optimised model is used on CPU, massive overhead will occur due to the limted amount of threading/parallel computing on CPU. The execution will need to allocate memory to save all the data from a thread before the start of the execution of the next thread in CPU. Therefore, it turns out the optimised model rans slower on CPU compared to the original model. 
+
+b) In this task the experiment is ran on Colab, using the A100 GPU. When the device is set to CUDA:
+```
+Original model: 1.8479 s 
+Optimized model: 1.3985 s
+```
