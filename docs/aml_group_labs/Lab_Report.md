@@ -127,15 +127,50 @@ This part is an effective display that different layers in the Neural network ma
 
 ### Task 1
 
-a) ```torch.compile``` compiles PyTorch code into optimized kernels that significantly speed up inference. This feature relies on **TorchDynamo** to compile the code into graphs and **TorchInductor** to further compile the graphs into optimized kernels, which is ready for GPU deployment.
+The experiments below were conducted on Colab, using the L4 GPU Runtime.
 
-When the optimised model is used on CPU, massive overhead will occur due to the limted amount of threading/parallel computing on CPU. The execution will need to allocate memory to save all the data from a thread before the start of the execution of the next thread in CPU. Therefore, it turns out the optimised model rans slower on CPU compared to the original model. 
+a) ```torch.compile``` compiles PyTorch code into optimized kernels that significantly speed up inference. This feature relies on **TorchDynamo** to compile the code into torch fx graphs using a JIT compiler and **TorchInductor** to further compile the fx graphs into optimized kernels.
 
-b) In this task the experiment is ran on Colab, using the T4 GPU. When the device is set to CUDA:
+In this task, the device is set to CPU, and the runtime comparison is:
+
 ```
-Original model: 1.8479 s 
-Optimized model: 1.3985 s
+Original model: 1.6215 s
+Optimized model: 7.1436 s
 ```
+
+The optimised model in this case actually runs slower than the original model, this can be explained as the overhead of the JIT compiler and the compilation process itself is not worth the performance gain from the optimised kernels, especially as we run the model inference on CPU for only 5 times. 
+
+The optimised model on average can perform better if we run the model for a large number of times, where the cost of initial compilation is amortised over the entire inference process. To test this, we ran the model with $n=20$ and the runtime comparison is:
+
+```
+Original model: 1.7296 s
+Optimized model: 1.2245 s
+```
+
+This supports our hypothesis.
+
+
+b) In this task the device is set to CUDA, and the runtime comparison for average model runtime (one forward pass/ inference) for 5 runs is:
+```
+Original model: 0.0902 s
+Optimized model: 3.5635 s
+```
+It can see that the optimised model runs significantly slower than the original model, this can be explained with a similar argument as part a) of this task, where the cost of initial compilation is a lot, and the optimisation is thus not worth it as we are only running 5 inferences. 
+
+Another observation is the the Optimized model also runs slower than the CPU run models. This can be explained as warm-up cost / initial compilation now is more as compared to the CPU, as the compilation now is now done for a more complex hardware target (the GPU).
+
+Going into more detail, the ```torch.compile```'s process **TorchDynamo**'s role remains unchanged compared to the CPU model, but now the **TorchInductor** part of the process, involves more complex optimisation processes to map the Fx graph into optimized CUDA kernels, which takes more time, and thus can explain the slower runtime, even compared to the CPU models. Basically the warm-up time is now a lot more as compared to the warm-up time of the CPU models.
+
+To verify the claim, we ran the model with $n=20$ and the runtime comparison is:
+```
+Original model: 0.0563 s
+Optimized model: 0.0426 ss
+```
+
+THis supports our hypothesis once again, as the initial compilation / warmup time is now amortised over 20 inference calls rather than just 5. 
+
+Thus, it makes sense to use ```torch.compile``` to optimise the model when running the model for a large number of inferences / forward passes, etc, which is the case in most real-world applications.
+
 
 ### Task 2
 
