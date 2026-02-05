@@ -40,7 +40,19 @@ Based on Part 1, we decided to use the model with quantisation level of 12 with 
 
 The best Pruning result in terms of evaluation accuracy for both ```L1-Norm``` and ```Random``` methods happened when sparsity is set to 0.1. As sparsity value increases, the model's evaluation accuracy reduces, particularly for ```L1-Norm``` method sharp drop occured between 0.8-0.9, while for ```Random``` method sharp drop happended eariler between 0.5-0.6. This can be explained as more weights and connections are dropped in high sparsity values, the BERT model will not be able to learn the representation of the network effectively.
 # Lab 2: Neural Architecture Search
+
+## Task 1
+
 ![Neural Architecture Search Task 1](./attachments/Tutorial_5_task_1.png)
+
+We did a sweep for all three different samplers, with 25 trials each. Due to the computational constrain and time needed for the training to complete, we picked 25 trials instead of the recommended 100 trials, and aiming to find a local minimiser, ie the best performance architecture out of the 25 trials with each sampler. 
+
+Based on the graph, GridSampler managed to find the best architecture that gives the highest accuracy, while TPESampler is gradually increasing the accuracy of the model, but not returning the best after 25 trials. On RandomSampler it managed to find the similar architecture that GridSampler did on the 25th trial, but due to it randomness, nothing is guaranteed.
+
+Another thing to note is the search space consists of 300 unique combinations, thus sweeping all the combinations with GridSampler is a time and computational costly process, which also supports the best accuracy shown above is just the optimal within the 25 trials. 
+
+
+## Task 2
 ![Neural Architecture Search Task 2](./attachments/Tutorial_5_Task2.png)
 
 
