@@ -214,7 +214,7 @@ Basically for MXINT8, we can use simple hardware blocks to implement effecient s
 
 b) The variable `dont_need_abs` is used to determine whether the IEEE floating-point implicit leading 1 is valid for a given MXINT mantissa. It checks the most significant bit of the mantissa to see if the value already lies in the correct range for the associated exponent. If this bit is set, the reconstructed BFloat16 value is already correct and no correction is required. 
 
-The variable `bias` represents the numerical value of the implicit leading 1, i.e. \( \pm 2^{\text{exponent}} \), constructed using the same sign and exponent with a zero fraction. When the mantissa is too small and the implicit leading 1 would incorrectly inflate the value, this bias is subtracted to compensate. 
+The variable `bias` represents the numerical value of the implicit leading 1, i.e. ±2^exponent, constructed using the same sign and exponent with a zero fraction. When the mantissa is too small and the implicit leading 1 would incorrectly inflate the value, this bias is subtracted to compensate. 
 
 Together, `dont_need_abs` and `bias` ensure accurate MXINT-to-BFloat16 reconstruction by explicitly correcting for the hidden leading 1 assumed by IEEE floating-point formats but absent in MXINT.
 
