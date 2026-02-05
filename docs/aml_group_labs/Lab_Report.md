@@ -51,21 +51,126 @@ After running 100 trials with Optuna TPESampler, the maximum achieved accuracy i
 ![Mixed Precision Search](./attachments/T6_1_100epoch.png)
 
 ## Part 2
+The experiment was setup to run 25 optuna trials, with the TPESamples, where the search space was constricted to a 2 linear layer choices similar to Part 1, but this time with we ran 8 different studies with following supported precisions for the linear layers: 
 
+| Study (precision variant) | Linear layer Search Space | Supported precision values (from Tutorial 6) |
+|---|---|---|
+| Integer | `torch.nn.Linear` / `LinearInteger` | bit-width \(W\) = [8, 16, 32]; frac-width \(F\) = [2, 4, 8] |
+| MinifloatDenorm | `torch.nn.Linear` / `LinearMinifloatDenorm` | total width \(W\) = [8, 16, 32]; exponent width \(E\) = [2, 4, 8]; exponent bias = `None` |
+| MinifloatIEEE | `torch.nn.Linear` / `LinearMinifloatIEEE` | total width \(W\) = [8, 16, 32]; exponent width \(E\) = [2, 4, 8]; exponent bias = `None` |
+| Log | `torch.nn.Linear` / `LinearLog` | bit-width \(W\) = [8, 16, 32]; exponent bias = [-1, 0, 1] |
+| BlockFP | `torch.nn.Linear` / `LinearBlockFP` | width \(W\) = [4, 8, 16]; exponent width \(E\) = [4, 8, 16]; block size = [8, 16, 32] |
+| BlockLog | `torch.nn.Linear` / `LinearBlockLog` | bit-width \(W\) = [8, 16, 32]; shared exponent-bias width = [2, 4, 8]; block size = [8, 16, 32] |
+| Binary | `torch.nn.Linear` / `LinearBinary` | binary (1-bit) weights; stochastic = [0, 1]; bipolar = `True` |
+| BinaryScaling | `torch.nn.Linear` / `LinearBinaryScaling` | binary (1-bit) data/weights/bias; stochastic = [0, 1]; bipolar = `True`; `binary_training` enabled |
+
+The plot below shows the maximum achieved accuracy for each study, with the number of trials on the x axis, and the maximum achieved accuracy up to that point on the y axis. We have multiple curves, showing the maximum achieved performance at different scales.
+
+**Performance Comparison for all suported linear layer precisions**
+![NAS Performance Comparison (All)](./attachments/nas_comparison_plot.png)
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <b>Figure 2a: High-performing Linear layers (0.86–0.88)</b><br>
+      <img src="./attachments/nas_comparison_plot_high.png" width="100%">
+    </td>
+    <td align="center" width="50%">
+      <b>Figure 2b: Mid/low-performing Linear layers (0.50–0.83)</b><br>
+      <img src="./attachments/nas_comparison_plot_mid.png" width="100%">
+    </td>
+  </tr>
+</table>
+
+A summary of the best performing linear layers for each precision variant can be found below:
+
+| Precision Type | Best Accuracy | Best Trial ID |
+|---|---:|---:|
+| BlockFP | 0.87324 | 20 |
+| MinifloatIEEE | 0.87228 | 16 |
+| Integer | 0.87216 | 4 |
+| BlockLog | 0.87196 | 13 |
+| MinifloatDenorm | 0.87168 | 21 |
+| Log | 0.80764 | 12 |
+| Binary | 0.51392 | 19 |
+| BinaryScaling | 0.50964 | 16 |
+
+This clearly shows that the BlockFP Layer quantisation performs the best, with the highest accuracy of 0.87324, followed by MinifloatIEEE, and Integer quantisations. The best performing linear layer choices and quantisations for the BlockFP precision (best trial = 20) are:
+
+- **BlockFP config**: `W=4`, `E=4`, `exponent_bias=None`, `block_size=8`
+- **Layers changed to BlockFP to**: `L0.query`, `L0.key`, `L0.attn_out_dense`, `L0.ffn_out_dense`, `L1.value`, `L1.ffn_out_dense`, `classifier`
+- **Layers retained with FP32**: `L0.value`, `L0.ffn_intermediate`, `L1.query`, `L1.key`, `L1.attn_out_dense`, `L1.ffn_intermediate`, `pooler_dense`
+
+```
+Input
+  │
+Encoder layer 0:
+  Q,K = BlockFP; V = FP32
+  Attention output dense = BlockFP
+  FFN intermediate = FP32; FFN output dense = BlockFP
+  │
+Encoder layer 1:
+  Q,K = FP32; V = BlockFP
+  Attention output dense = FP32
+  FFN intermediate = FP32; FFN output dense = BlockFP
+  │
+Pooler dense = FP32
+  │
+Classifier dense = BlockFP
+```
+
+A thing to note about the experiment is that it is limited to trying between only 2 linear layer quantisation choices in every study, and also we were restricted by computuational resources restricting our number of trials to only 25. Running expeirments with more number of trials can lead to finding better performing quantisations for some of the layers, and may even lead to the mid/low performing layers to perform close to our original unquantised baseline model. Similarly running a study with the search space spanning all the possible linear layer quantisation may be computationally expensive but can lead to finding the best performing model.
+
+This part is an effective display that different layers in the Neural network may be quantised with a different precision or precision type to achieve the best performance, given adequate computational resources to perform the hyper-parameter search. 
 
 # Lab 4: (Software Stream) Performance Engineering
 
 ### Task 1
 
-a) ```torch.compile``` compiles PyTorch code into optimized kernels that significantly speed up inference. This feature relies on **TorchDynamo** to compile the code into graphs and **TorchInductor** to further compile the graphs into optimized kernels, which is ready for GPU deployment.
+The experiments below were conducted on Colab, using the L4 GPU Runtime.
 
-When the optimised model is used on CPU, massive overhead will occur due to the limted amount of threading/parallel computing on CPU. The execution will need to allocate memory to save all the data from a thread before the start of the execution of the next thread in CPU. Therefore, it turns out the optimised model rans slower on CPU compared to the original model. 
+a) ```torch.compile``` compiles PyTorch code into optimized kernels that significantly speed up inference. This feature relies on **TorchDynamo** to compile the code into torch fx graphs using a JIT compiler and **TorchInductor** to further compile the fx graphs into optimized kernels.
 
-b) In this task the experiment is ran on Colab, using the T4 GPU. When the device is set to CUDA:
+In this task, the device is set to CPU, and the runtime comparison is:
+
 ```
-Original model: 1.8479 s 
-Optimized model: 1.3985 s
+Original model: 1.6215 s
+Optimized model: 7.1436 s
 ```
+
+The optimised model in this case actually runs slower than the original model, this can be explained as the overhead of the JIT compiler and the compilation process itself is not worth the performance gain from the optimised kernels, especially as we run the model inference on CPU for only 5 times. 
+
+The optimised model on average can perform better if we run the model for a large number of times, where the cost of initial compilation is amortised over the entire inference process. To test this, we ran the model with $n=20$ and the runtime comparison is:
+
+```
+Original model: 1.7296 s
+Optimized model: 1.2245 s
+```
+
+This supports our hypothesis.
+
+
+b) In this task the device is set to CUDA, and the runtime comparison for average model runtime (one forward pass/ inference) for 5 runs is:
+```
+Original model: 0.0902 s
+Optimized model: 3.5635 s
+```
+It can see that the optimised model runs significantly slower than the original model, this can be explained with a similar argument as part a) of this task, where the cost of initial compilation is a lot, and the optimisation is thus not worth it as we are only running 5 inferences. 
+
+Another observation is the the Optimized model also runs slower than the CPU run models. This can be explained as warm-up cost / initial compilation now is more as compared to the CPU, as the compilation now is now done for a more complex hardware target (the GPU).
+
+Going into more detail, the ```torch.compile```'s process **TorchDynamo**'s role remains unchanged compared to the CPU model, but now the **TorchInductor** part of the process, involves more complex optimisation processes to map the Fx graph into optimized CUDA kernels, which takes more time, and thus can explain the slower runtime, even compared to the CPU models. Basically the warm-up time is now a lot more as compared to the warm-up time of the CPU models.
+
+To verify the claim, we ran the model with $n=20$ and the runtime comparison is:
+```
+Original model: 0.0563 s
+Optimized model: 0.0426 ss
+```
+
+THis supports our hypothesis once again, as the initial compilation / warmup time is now amortised over 20 inference calls rather than just 5. 
+
+Thus, it makes sense to use ```torch.compile``` to optimise the model when running the model for a large number of inferences / forward passes, etc, which is the case in most real-world applications.
+
 
 ### Task 2
 
