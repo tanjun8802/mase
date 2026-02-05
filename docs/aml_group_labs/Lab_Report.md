@@ -55,6 +55,12 @@ Another thing to note is the search space consists of 300 unique combinations, t
 ## Task 2
 ![Neural Architecture Search Task 2](./attachments/Tutorial_5_Task2.png)
 
+The plot above compares the best accuracy achieved over the number of trials for three cases: the best model from Task 1 without compression, compression-aware search without post-compression training, and compression-aware search with post-compression training.
+
+The compression-aware search without post-compression training consistently underperforms the uncompressed baseline, indicating that quantization and pruning introduce an immediate degradation in accuracy when no further adaptation is allowed. In contrast, enabling post-compression training not only recovers this loss but leads to a compressed model that outperforms the original uncompressed model.
+
+This result suggests that jointly optimising architecture and compression encourages the discovery of models that are inherently more robust to quantization and pruning. Furthermore, post-compression training allows the model to adapt effectively to the constrained parameter space, resulting in improved generalisation and higher final accuracy despite the reduced model precision and size.
+
 
 # Lab 3: Mixed Precision Search
 ## Part 1
