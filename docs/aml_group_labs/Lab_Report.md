@@ -203,5 +203,14 @@ Unfused SPDA:     0.616 ms
 Fused SPDA:       0.257 ms
 ```
 Here no matter CPU or GPU is used, Fused SPDA outperforms the original SPDA implementation. This can be explained as in the fused version, PyTorch implementation reduces the amount of read/write operations by only having a single kernel. It basically removes the need of storing the intermediate results, unlike the normal verison of SPDA where we need 4 kernels to perform a successful SPDA, which requires to record the intermediate products which increased the memory access traffic, which translates to slower completion speed.
+
 ### Task 3
+
+a) If the hardware device has support for the MXINT8 type, and both the weights and activations are quantized to MXINT8, then we don't need a special dequantization kernel to convert the stored MXINT8 numbers to BFloat16 or any other floating-point type, this allows the hardware to reap the benefits from the MXINT8 (less memory usage) while allowing for efficient computation, which will provide massive runtime performance, both while running a forward pass on our model or a backward pass (during training). 
+
+Additionally, thinking in detail about the custom hardware, most of the operations like forward passes can just be implemented, by being able to add 2 MXINT8 numbers together, this can be easily done, if we have a full-adder on the mantisa bits in the MXINT-8 and have a left shift operation available on the shared exponent bits (scale). Similarly for multiplying two MXINT8 numbers together, we just need a multiplier on the mantissa bits and an adder on the exponent bits. 
+
+Basically for MXINT8, we can use simple hardware blocks to implement effecient support for the type, and get good runtime performance, avoiding the dequatization step to perform computations. 
+
+
 
