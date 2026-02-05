@@ -69,11 +69,13 @@ Optimized model: 1.3985 s
 
 ### Task 2
 
-a) We applied the profiling in Task 1 to here, and when the device is set to CPU, 
+a) We applied the profiling in Task 1 to here, and when the device is set to CPU:
 ```
 Unfused SPDA:     546.620 ms
 Fused SPDA:       27.650 ms
 ```
+
+
 b) When device is set to CUDA (Colab), using the T4 GPU gives the runtime comparison:
 ```
 Unfused SPDA:     0.616 ms
@@ -81,4 +83,65 @@ Fused SPDA:       0.257 ms
 ```
 Here no matter CPU or GPU is used, Fused SPDA outperforms the original SPDA implementation. This can be explained as in the fused version, PyTorch implementation reduces the amount of read/write operations by only having a single kernel. It basically removes the need of storing the intermediate results, unlike the normal verison of SPDA where we need 4 kernels to perform a successful SPDA, which requires to record the intermediate products which increased the memory access traffic, which translates to slower completion speed.
 ### Task 3
+b) The purpose of the loop is to take a compressed 8-bit integers (MXINT8) and expand them into 16 bit brain floating point numbers (Bfloat16) so the GPU can perform high-precision math operation. 
+
+However, there might be a problem when the GPU assumes there is a implicit leading bit in front of the mantissa, but MXINT8 is a raw integer without the implicit leading bit. For example: 
+
+Let the MXINT8 value = -5 and shared scale = 2
+```
+MXINT8 input: 
+- Integer (hX) = 10000101 ("1" for the negative sign bit, "0000101" for 5 in binary)
+- Shared Scale = exponent bias (127)  + Shared Scale (2) = "10000001" (129 in binary)
+```
+
+After bitcast, the code form a 16-bit string: 
+```
+[Sign: 1][Exp: 10000001][Mantissa: 0001010]*
+```
+*0001010 is 5 in binary shifted left by 1, this is to align the bits to Bfloat16 binary point. 
+
+However, when GPU interpret this number as a bfloat16, it calculate as: 
+```
+Sign = 1 -> negative
+Exponent = 129 - 127 = 2 -> Exponent of 2
+Mantissa =  0.0001010 (fraction) + 1.0000000 (assumed implicit leading bit)= 1.0001010 (1.078125 in decimal)
+
+Hardware final interpretation Output: - 1.078125 * 2^2 = -4.3125
+
+```
+In the "dont_need_abs" logic, only the lower 6 bits of MXINT8 integer are put into the fraction and the most significant bit of MXINT8 (the "64" bit) is used to decide whether it is necessary to minus bias to compensate for the "implicit 1". Therefore, the "implicit 1" is designed to represent the value of 64 in Bfloat16. 
+
+Hence, we conclude the dequantisation kernel formula without considering bias are: 
+```
+(sign)* Bfloat16 = (sign)*(MXINT8 Integer Magnitude/64)*2^(shared_scale)
+```
+Using this formula, we can check that the corresponding MXINT8 of the previous output are: 
+```
+ -4.3125/4*64 = -69 -> Magnitude differ by the value of the "implicit 1" = 64
+```
+
+Therefore, to solve this problem, the dequantisation kernel formula needs to subtract bias if necessary.
+```
+y[i] = dont_need_abs ? out : out - bias
+
+If the 7th bit of MXINT8 = 1: # MXINT8 magnitude >= 64 
+     = (sign)*(1.0 + MXINT8 Magnitude/64)*2^(shared_scale)
+
+(e.g. 65 = 1000001 in binary -> fraction = 0.000010 when divided by 64 -> after adding the "implicit 1" = 1.0000010 -> 64 + 1 = 65 -> No need for bias reduction because MSB of 1 already act as 64 in 1000001)
+
+Else: # MXINT8 magnitude < 64
+     = (sign)*(1.0 + MXINT8 Magnitude/64)*2^(shared_scale) - 
+       (1.0*2^(shared_scale))
+     = MXINT8 Magnitude/64 * 2^(shared_value)
+
+```
+Hence, applying the formula:
+```
+Corresponding MXINT8 = -0.3125*64/4 = -5
+```
+
+To conclude, the variable "dont_need_abs" is a boolean representing the result of a range check that determines if the bias subtraction is necessary. For the variable "bias", it represents the value of the implicit leading bit that bfloat16 automatically added into any bitcasted number. 
+
+
+
 
