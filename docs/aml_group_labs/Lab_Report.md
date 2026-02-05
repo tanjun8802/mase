@@ -49,6 +49,8 @@ We did a sweep for all three different samplers, with 25 trials each. Due to the
 
 Based on the graph, GridSampler managed to find the best architecture that gives the highest accuracy, while TPESampler is gradually increasing the accuracy of the model, but not returning the best after 25 trials. On RandomSampler it managed to find the similar architecture that GridSampler did on the 25th trial, but due to it randomness, nothing is guaranteed.
 
+Another thing to note is the search space consists of 300 unique combinations, thus sweeping all the combinations with GridSampler is a time and computational costly process, which also supports the best accuracy shown above is just the optimal within the 25 trials. 
+
 
 ## Task 2
 ![Neural Architecture Search Task 2](./attachments/Tutorial_5_Task2.png)
