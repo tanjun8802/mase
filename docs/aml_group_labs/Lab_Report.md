@@ -206,26 +206,32 @@ Here no matter CPU or GPU is used, Fused SPDA outperforms the original SPDA impl
 
 ### Task 3
 
-a) If the hardware device has support for the MXINT8 type, and both the weights and activations are quantized to MXINT8, then we don't need a special dequantization kernel to convert the stored MXINT8 numbers to BFloat16 or any other floating-point type, this allows the hardware to reap the benefits from the MXINT8 (less memory usage) while allowing for efficient computation, which will provide massive runtime performance, both while running a forward pass on our model or a backward pass (during training). 
+### a)
+ If the hardware device has support for the MXINT8 type, and both the weights and activations are quantized to MXINT8, then we don't need a special dequantization kernel to convert the stored MXINT8 numbers to BFloat16 or any other floating-point type, this allows the hardware to reap the benefits from the MXINT8 (less memory usage) while allowing for efficient computation, which will provide massive runtime performance, both while running a forward pass on our model or a backward pass (during training). 
 
 Additionally, thinking in detail about the custom hardware, most of the operations like forward passes can just be implemented, by being able to add 2 MXINT8 numbers together, this can be easily done, if we have a full-adder on the mantisa bits in the MXINT-8 and have a left shift operation available on the shared exponent bits (scale). Similarly for multiplying two MXINT8 numbers together, we just need a multiplier on the mantissa bits and an adder on the exponent bits. 
 
 Basically for MXINT8, we can use simple hardware blocks to implement effecient support for the type, and get good runtime performance, avoiding the dequatization step to perform computations. 
 
-b) The variable `dont_need_abs` is used to determine whether the IEEE floating-point implicit leading 1 is valid for a given MXINT mantissa. It checks the most significant bit of the mantissa to see if the value already lies in the correct range for the associated exponent. If this bit is set, the reconstructed BFloat16 value is already correct and no correction is required. 
+### b)
+ The variable `dont_need_abs` is used to determine whether the IEEE floating-point implicit leading 1 is valid for a given MXINT mantissa. It checks the most significant bit of the mantissa to see if the value already lies in the correct range for the associated exponent. If this bit is set, the reconstructed BFloat16 value is already correct and no correction is required. 
 
 The variable `bias` represents the numerical value of the implicit leading 1, i.e. ±2^exponent, constructed using the same sign and exponent with a zero fraction. When the mantissa is too small and the implicit leading 1 would incorrectly inflate the value, this bias is subtracted to compensate. 
 
 Together, `dont_need_abs` and `bias` ensure accurate MXINT-to-BFloat16 reconstruction by explicitly correcting for the hidden leading 1 assumed by IEEE floating-point formats but absent in MXINT.
 
 
-c) Note: ```cta``` is equivalent to the thread block inside CUDA. \
+### c)
+
+ Note: ```CTA``` is equivalent to the thread block inside CUDA. \
 ```CTATiler``` is the function to partition data from the global tensor to smaller tiles such that each CTA can process one of the tiles divded from global tensor based on the index of the CTA block inside the grid (first mode). For data copy process, with GPU, if all the threads can be utilised to perform the copy operation, the copy process will be rapid and efficient. 
 
 Thus, looking into each CTA within the grid, think ```local_tile``` as a inner partition function that separates tile obtained from ```CTATiler``` at CTA level into smaller problems (subtiles) for the threads inside the CTA, where each thread can then process the subtiles in parallel. In data copy scenario, once the tiling process above is done, becasue each thread owns an element of the tile (subtensor), they can all participate in the copy process, which is done when the ```copy()``` function is called, for example in the [`mase_cuda::mxint8::dequantize:dequantize1d_device`](https://github.com/DeepWok/mase-cuda/blob/master/src/csrc/mxint/dequantize.cuh) line 131: ```copy_if(tXpX, tXgX, tXsX)```.
 
+Based on [`mase_cuda::mxint8::dequantize:dequantize1d_device`](https://github.com/DeepWok/mase-cuda/blob/master/src/csrc/mxint/dequantize.cuh) ```layout_sX```is the way to layout the threads inside a CTA block, where here in this case, depend on the group size of the MXINT8 quantise numbers, ```layout_sX``` defines the shape (M,N) of how the threads should be arranged inside a CTA.
 
-```local_partition``` differs from ```local_tile``` as it uses the number of tiles as the coordinate system. 
+From line 96 in the same code reference as above, ```sX``` is the pointer to the shared memory for the CTA tile, so by passing ```layout_sX``` inside the ```local_partition``` function (line 101: ```Tensor tXsX = local_partition(sX, layout_sX, threadIdx.x);``` ), ```layout_sX``` first uses the flat thread index ```threadIdx.x``` to build up 2D coordinate system, (m,k) and thus maps the CTA tile to this thread index layout, so each thread gets a partitioned data from the CTA tile, based on ```layout_sX```, to perform computation. 
+
 
 
 
