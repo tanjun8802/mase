@@ -233,6 +233,18 @@ Based on [`mase_cuda::mxint8::dequantize:dequantize1d_device`](https://github.co
 From line 96 in the same code reference as above, ```sX``` is the pointer to the shared memory for the CTA tile, so by passing ```layout_sX``` inside the ```local_partition``` function (line 101: ```Tensor tXsX = local_partition(sX, layout_sX, threadIdx.x);``` ), ```layout_sX``` first uses the flat thread index ```threadIdx.x``` to build up 2D coordinate system, (m,k) and thus maps the CTA tile to this thread index layout, so each thread gets a partitioned data from the CTA tile, based on ```layout_sX```, to perform computation. 
 
 
+### d)
+
+Assume all model parameters are converted into MXINT8 format, we will obtain the 74.2% of memory saved. However the code segmet:
+
+```
+if not isinstance(layer, torch.nn.Linear):
+        continue
+    if "classifier" in layer_name:
+        continue
+```
+skips the quantisation function when it is not a linear layer or a classifier. Thus, these numerical parameters will still be in the FP32 format, (**which makes sense since we don't want to lose the precision and justifies the similarity of the final model prediction between the two models**). Thus, the final memory saved is not the same as the hypothesis in the question.
+
 
 
 # References and Links
