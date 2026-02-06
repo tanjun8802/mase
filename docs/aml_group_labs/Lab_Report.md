@@ -67,7 +67,8 @@ This result suggests that jointly optimising architecture and compression encour
 # Lab 3: Mixed Precision Search
 ## Part 1
 
-After running 100 trials with Optuna TPESampler, the maximum achieved accuracy is found to be 0.87216. The plot optimization history plot also shows the best accuracy has been reached in the first 10 trials, with the remaining trials attemping to improve but didn't find any better parameters. 
+After running 100 trials with Optuna TPESampler, the maximum achieved accuracy is found to be 0.87216. The plot also shows the best accuracy was reached within the first 10 trials, with the remaining trials attempting to improve but no better parameters were found. Also, the Neural Architecture search in this case was able to find different quantisations for different layers, and this was more optimal than having the same quantisation on all layers, as we performed better than the benchmark model from task2.
+
 ![Mixed Precision Search](./attachments/T6_1_100epoch.png)
 
 ## Part 2
