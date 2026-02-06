@@ -219,4 +219,18 @@ The variable `bias` represents the numerical value of the implicit leading 1, i.
 Together, `dont_need_abs` and `bias` ensure accurate MXINT-to-BFloat16 reconstruction by explicitly correcting for the hidden leading 1 assumed by IEEE floating-point formats but absent in MXINT.
 
 
+c) Note: ```cta``` is equivalent to the thread block inside CUDA. \
+```CTATiler``` is the function to partition data from the global tensor to smaller tiles such that each CTA can process one of the tiles divded from global tensor based on the index of the CTA block inside the grid (first mode). For data copy process, with GPU, if all the threads can be utilised to perform the copy operation, the copy process will be rapid and efficient. 
 
+Thus, looking into each CTA within the grid, think ```local_tile``` as a inner partition function that separates tile obtained from ```CTATiler``` at CTA level into smaller problems (subtiles) for the threads inside the CTA, where each thread can then process the subtiles in parallel. In data copy scenario, once the tiling process above is done, becasue each thread owns an element of the tile (subtensor), they can all participate in the copy process, which is done when the ```copy()``` function is called, for example in the [`mase_cuda::mxint8::dequantize:dequantize1d_device`](https://github.com/DeepWok/mase-cuda/blob/master/src/csrc/mxint/dequantize.cuh) line 131: ```copy_if(tXpX, tXgX, tXsX)```.
+
+
+```local_partition``` differs from ```local_tile``` as it uses the number of tiles as the coordinate system. 
+
+
+
+# References and Links
+1. https://leimao.github.io/blog/CuTe-Local-Tile/
+2. https://docs.nvidia.com/cutlass/latest/media/docs/cpp/cute/0x_gemm_tutorial.html
+3. https://docs.nvidia.com/cutlass/4.2.1/media/docs/cpp/cute/0x_gemm_tutorial.html
+4. https://leimao.github.io/blog/CuTe-Local-Partition/
