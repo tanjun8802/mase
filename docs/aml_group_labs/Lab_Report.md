@@ -38,7 +38,9 @@ Based on Part 1, we decided to use the model with quantisation level of 12 with 
 
 ![Pruning Sparsity with methods](./attachments/Pruning_results.png)
 
-The best Pruning result in terms of evaluation accuracy for both ```L1-Norm``` and ```Random``` methods happened when sparsity is set to 0.1. As sparsity value increases, the model's evaluation accuracy reduces, particularly for ```L1-Norm``` method sharp drop occured between 0.8-0.9, while for ```Random``` method sharp drop happended eariler between 0.5-0.6. This can be explained as more weights and connections are dropped in high sparsity values, the BERT model will not be able to learn the representation of the network effectively.
+The best Pruning result in terms of evaluation accuracy for both ```L1-Norm``` and ```Random``` methods happened when sparsity is set to 0.1. ```L1-Norm``` outperforms ```Random``` as sparsity value increases, where even with a high sparsity value (0.7-0.8), the model is still able to retain 0.80 accuracy.   
+
+As sparsity value increases, the model's evaluation accuracy reduces, particularly for ```L1-Norm``` method sharp drop occured between 0.8-0.9, while for ```Random``` method sharp drop happended eariler between 0.5-0.6. This can be explained as more weights and connections are dropped in high sparsity values, the BERT model will not be able to learn the representation of the network effectively. 
 # Lab 2: Neural Architecture Search
 
 ## Task 1
