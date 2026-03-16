@@ -23,7 +23,7 @@ class AutoPipeline:
             pass_list (list, optional): List of passes to run. Defaults to [].
         """
         self.pass_groups = pass_groups if pass_groups is not None else []
-        self.pass_outputs = [{}] * len(pass_groups)
+        self.pass_outputs = [{}] * len(self.pass_groups)
 
     def _run_pass_group(
         self,
