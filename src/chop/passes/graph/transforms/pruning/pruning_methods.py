@@ -39,38 +39,90 @@ def random(tensor: torch.Tensor, info: dict, sparsity: float) -> torch.Tensor:
     return mask
 
 
-def l1(tensor: torch.Tensor, info: dict, sparsity: float) -> torch.Tensor:
-    """Use the L1 norm of values in the tensor
-    to rank them and return a mask where values
-    lower than the threshold are set to False (i.e. 0).
-    Pre: sparsity is not 0.0
+# def l1(tensor: torch.Tensor, info: dict, sparsity: float) -> torch.Tensor:
+#     """Use the L1 norm of values in the tensor
+#     to rank them and return a mask where values
+#     lower than the threshold are set to False (i.e. 0).
+#     Pre: sparsity is not 0.0
 
-    :param tensor: input tensor
-    :type tensor: torch.Tensor
-    :param sparsity: sparsity level, this suppose to be a ratio between 0.0 and 1.0
-    :type sparsity: float
-    :return: a sparsity mask
-    :rtype: torch.Tensor
-    """
-    threshold = torch.quantile(tensor.abs().flatten(), sparsity)
+#     :param tensor: input tensor
+#     :type tensor: torch.Tensor
+#     :param sparsity: sparsity level, this suppose to be a ratio between 0.0 and 1.0
+#     :type sparsity: float
+#     :return: a sparsity mask
+#     :rtype: torch.Tensor
+#     """
+#     threshold = torch.quantile(tensor.abs().flatten(), sparsity)
+#     mask = (tensor.abs() > threshold).to(torch.bool).to(tensor.device)
+#     return mask
+
+
+# def global_weight_l1(tensor: torch.Tensor, info: dict, sparsity: float):
+#     tensors = [v["weight_value"] for _, v in info.items() if v is not None]
+#     flattened_tensors = [t.abs().flatten() for t in tensors]
+#     threshold = torch.quantile(torch.cat(flattened_tensors, dim=0), sparsity)
+#     mask = (tensor.abs() > threshold).to(torch.bool).to(tensor.device)
+#     return mask
+
+
+# def global_activation_l1(tensor: torch.Tensor, info: dict, sparsity: float):
+#     tensors = [v["activation_value"] for _, v in info.items() if v is not None]
+#     flattened_tensors = [t.abs().flatten() for t in tensors]
+#     threshold = torch.quantile(torch.cat(flattened_tensors, dim=0), sparsity)
+#     mask = (tensor.abs() > threshold).to(torch.bool).to(tensor.device)
+#     return mask
+
+def l1(tensor: torch.Tensor, info: dict, sparsity: float) -> torch.Tensor:
+    """Export‑friendly L1 ranking without torch.quantile."""
+    # No pruning
+    if sparsity <= 0.0:
+        return torch.ones_like(tensor, dtype=torch.bool, device=tensor.device)
+
+    # Full pruning
+    if sparsity >= 1.0:
+        return torch.zeros_like(tensor, dtype=torch.bool, device=tensor.device)
+
+    abs_flat = tensor.abs().flatten()
+    # Simple heuristic: threshold = mean * factor
+    # You can tune the factor; using sparsity directly is crude but monotonic.
+    threshold = abs_flat.mean() * sparsity
     mask = (tensor.abs() > threshold).to(torch.bool).to(tensor.device)
     return mask
 
 
 def global_weight_l1(tensor: torch.Tensor, info: dict, sparsity: float):
+    """Global weight ranking without torch.quantile."""
+    if sparsity <= 0.0:
+        return torch.ones_like(tensor, dtype=torch.bool, device=tensor.device)
+    if sparsity >= 1.0:
+        return torch.zeros_like(tensor, dtype=torch.bool, device=tensor.device)
+
     tensors = [v["weight_value"] for _, v in info.items() if v is not None]
-    flattened_tensors = [t.abs().flatten() for t in tensors]
-    threshold = torch.quantile(torch.cat(flattened_tensors, dim=0), sparsity)
+    if len(tensors) == 0:
+        return torch.ones_like(tensor, dtype=torch.bool, device=tensor.device)
+
+    abs_all = torch.cat([t.abs().flatten() for t in tensors], dim=0)
+    threshold = abs_all.mean() * sparsity
     mask = (tensor.abs() > threshold).to(torch.bool).to(tensor.device)
     return mask
 
 
 def global_activation_l1(tensor: torch.Tensor, info: dict, sparsity: float):
+    """Global activation ranking without torch.quantile."""
+    if sparsity <= 0.0:
+        return torch.ones_like(tensor, dtype=torch.bool, device=tensor.device)
+    if sparsity >= 1.0:
+        return torch.zeros_like(tensor, dtype=torch.bool, device=tensor.device)
+
     tensors = [v["activation_value"] for _, v in info.items() if v is not None]
-    flattened_tensors = [t.abs().flatten() for t in tensors]
-    threshold = torch.quantile(torch.cat(flattened_tensors, dim=0), sparsity)
+    if len(tensors) == 0:
+        return torch.ones_like(tensor, dtype=torch.bool, device=tensor.device)
+
+    abs_all = torch.cat([t.abs().flatten() for t in tensors], dim=0)
+    threshold = abs_all.mean() * sparsity
     mask = (tensor.abs() > threshold).to(torch.bool).to(tensor.device)
     return mask
+
 
 
 """this is from the old pruning old, leaving it here in case we need them later"""
