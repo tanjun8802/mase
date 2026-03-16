@@ -43,10 +43,7 @@ def get_activation_hook(name, info, named_info, a_config: dict):
                 f"{module.__class__.__name__} takes more than 1 argument at inference, the current sparsiy_input pre forward hook only allows one!"
             )
         x = args[0]
-        mask = a_rank_fn(x, info, a_sparsity)
-        module.activation_mask = mask
-        # it seems like the output of this can be a non-tuple thing??
-        return x * mask
+        return x
 
     return ("register_forward_pre_hook", sparsify_input)
 
